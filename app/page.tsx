@@ -446,7 +446,7 @@ export default function Home() {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ ...source, currentDate: new Date().toISOString() })
           });
-          const data = await readApiJson<ExtractApiResponse>(response, "Extraction timed out or returned an invalid response. Try building this source by itself, or paste a shorter assignment/calendar section.");
+          const data = await readApiJson<ExtractApiResponse>(response, "Extraction could not finish for this source. Try building it by itself, or paste a shorter assignment/calendar section.");
 
           if (data.tasks.length === 0) {
             skippedCount += 1;
@@ -468,15 +468,15 @@ export default function Home() {
           setMessage(`Processed ${index + 1}/${allSources.length}. Added ${builtCount} task${builtCount === 1 ? "" : "s"} so far.`);
         } catch {
           failedCount += 1;
-          setMessage(`Processed ${index + 1}/${allSources.length}. One source timed out; continuing with the rest.`);
+          setMessage(`Processed ${index + 1}/${allSources.length}. One source could not finish; continuing with the rest.`);
         }
       }
 
       setMessage(
         builtCount
-          ? `Done: ${allSources.length}/${allSources.length} sources processed. Added ${builtCount} task${builtCount === 1 ? "" : "s"}.${skippedCount ? ` ${skippedCount} source${skippedCount === 1 ? "" : "s"} had no deadlines.` : ""}${failedCount ? ` ${failedCount} source${failedCount === 1 ? "" : "s"} timed out; try those by themselves.` : ""}`
+          ? `Done: ${allSources.length}/${allSources.length} sources processed. Added ${builtCount} task${builtCount === 1 ? "" : "s"}.${skippedCount ? ` ${skippedCount} source${skippedCount === 1 ? "" : "s"} had no deadlines.` : ""}${failedCount ? ` ${failedCount} source${failedCount === 1 ? "" : "s"} could not finish; try those by themselves.` : ""}`
           : failedCount
-            ? `No tasks added. ${failedCount}/${allSources.length} source${failedCount === 1 ? "" : "s"} timed out. Try one source at a time or paste a shorter section.`
+            ? `No tasks added. ${failedCount}/${allSources.length} source${failedCount === 1 ? "" : "s"} could not finish. Try one source at a time or paste a shorter section.`
             : "No deadlines or class obligations found. That source was not added to the board."
       );
     } catch (error) {

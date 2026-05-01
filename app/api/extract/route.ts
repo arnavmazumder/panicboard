@@ -132,7 +132,7 @@ ${rawText.slice(0, 30_000)}`
             }
           ]
         },
-        { timeout: 24_000, maxRetries: 0 }
+        { timeout: 55_000, maxRetries: 0 }
       );
       const content = completion.choices[0]?.message.content || "{}";
       return NextResponse.json(clampResponse(JSON.parse(content) as ExtractApiResponse));
