@@ -429,49 +429,55 @@ export default function Home() {
       return;
     }
     setLoading(true);
-    setMessage("Extracting deadlines and building your board...");
+    setMessage(`Starting extraction: 0/${allSources.length} sources processed...`);
     try {
-      const results = await Promise.allSettled(allSources.map(async (source) => {
-        const response = await fetch("/api/extract", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...source, currentDate: new Date().toISOString() })
-        });
-        const data = await readApiJson<ExtractApiResponse>(response, "Extraction timed out or returned an invalid response. Try building one source at a time, or paste a shorter assignment/calendar section.");
-        return { source, data: data as ExtractApiResponse };
-      }));
-      const extracted = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
-      const failedCount = results.length - extracted.length;
+      let accumulatedTasks = replace ? [] : tasks;
+      let builtCount = 0;
+      let failedCount = 0;
+      let skippedCount = 0;
 
-      if (extracted.length === 0) {
-        const firstFailure = results.find((result) => result.status === "rejected");
-        throw new Error(firstFailure?.status === "rejected" && firstFailure.reason instanceof Error ? firstFailure.reason.message : "Extraction failed. Try a shorter source or build one class at a time.");
+      if (replace) updateTasks([]);
+
+      for (const [index, source] of allSources.entries()) {
+        setMessage(`Processing ${index + 1}/${allSources.length}: ${source.sourceName}`);
+        try {
+          const response = await fetch("/api/extract", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ...source, currentDate: new Date().toISOString() })
+          });
+          const data = await readApiJson<ExtractApiResponse>(response, "Extraction timed out or returned an invalid response. Try building this source by itself, or paste a shorter assignment/calendar section.");
+
+          if (data.tasks.length === 0) {
+            skippedCount += 1;
+            setSources((current) => current.filter((item) => item.id !== source.id));
+            setMessage(`Processed ${index + 1}/${allSources.length}. Skipped ${source.sourceName}: no deadlines found.`);
+            continue;
+          }
+
+          const next = data.tasks.map((task) =>
+            normalizeExtractedTask(canonicalizeApiTaskCourse(task, data.courseName, accumulatedTasks), source.sourceName, canonicalCourseName(data.courseName, accumulatedTasks))
+          );
+          const deduped = uniqueTasks(accumulatedTasks, next);
+          if (deduped.length > 0) {
+            accumulatedTasks = [...accumulatedTasks, ...deduped];
+            builtCount += deduped.length;
+            updateTasks(accumulatedTasks);
+          }
+          markSourcesExtracted([source]);
+          setMessage(`Processed ${index + 1}/${allSources.length}. Added ${builtCount} task${builtCount === 1 ? "" : "s"} so far.`);
+        } catch {
+          failedCount += 1;
+          setMessage(`Processed ${index + 1}/${allSources.length}. ${source.sourceName} timed out; continuing with the rest.`);
+        }
       }
 
-      const validExtractions = extracted.filter(({ data }) => data.tasks.length > 0);
-      const invalidSources = extracted.filter(({ data }) => data.tasks.length === 0).map(({ source }) => source);
-
-      if (invalidSources.length > 0) {
-        const invalidIds = new Set(invalidSources.map((source) => source.id));
-        setSources((current) => current.filter((source) => !invalidIds.has(source.id)));
-      }
-
-      if (validExtractions.length === 0) {
-        if (replace) updateTasks([]);
-        setMessage("No deadlines or class obligations found. That source was not added to the board.");
-        return;
-      }
-
-      const next = validExtractions.flatMap(({ source, data }) =>
-        data.tasks.map((task) => normalizeExtractedTask(canonicalizeApiTaskCourse(task, data.courseName, tasks), source.sourceName, canonicalCourseName(data.courseName, tasks)))
-      );
-      const deduped = replace ? uniqueTasks([], next) : uniqueTasks(tasks, next);
-      updateTasks(replace ? deduped : [...tasks, ...deduped]);
-      markSourcesExtracted(validExtractions.map(({ source }) => source));
       setMessage(
-        deduped.length
-          ? `Built ${deduped.length} new task${deduped.length === 1 ? "" : "s"}.${invalidSources.length ? ` Skipped ${invalidSources.length} source${invalidSources.length === 1 ? "" : "s"} with no deadlines.` : ""}${failedCount ? ` ${failedCount} source${failedCount === 1 ? "" : "s"} timed out; try that one by itself.` : ""} Start with the top card in Today.`
-          : "No new tasks found. This source may already be on the board."
+        builtCount
+          ? `Done: ${allSources.length}/${allSources.length} sources processed. Added ${builtCount} task${builtCount === 1 ? "" : "s"}.${skippedCount ? ` ${skippedCount} source${skippedCount === 1 ? "" : "s"} had no deadlines.` : ""}${failedCount ? ` ${failedCount} source${failedCount === 1 ? "" : "s"} timed out; try those by themselves.` : ""}`
+          : failedCount
+            ? `No tasks added. ${failedCount}/${allSources.length} source${failedCount === 1 ? "" : "s"} timed out. Try one source at a time or paste a shorter section.`
+            : "No deadlines or class obligations found. That source was not added to the board."
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Extraction failed. You can still paste text or add tasks manually.");

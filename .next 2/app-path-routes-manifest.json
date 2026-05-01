@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/fetch-url/route": "/api/fetch-url",
+  "/api/extract/route": "/api/extract",
+  "/courses/page": "/courses",
+  "/page": "/",
+  "/calendar/page": "/calendar",
+  "/today/page": "/today",
+  "/sources/page": "/sources"
+}
