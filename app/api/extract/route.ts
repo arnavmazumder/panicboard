@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create(
         {
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          model: `gpt-4o-${"mini"}`,
           response_format: { type: "json_schema", json_schema: jsonSchema },
           temperature: 0.1,
           messages: [

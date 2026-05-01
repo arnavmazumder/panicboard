@@ -28,7 +28,7 @@ OpenAI extraction:
 OPENAI_API_KEY=your_key_here npm run dev
 ```
 
-You can also set `OPENAI_MODEL`; otherwise the app uses `gpt-4o-mini`. Without `OPENAI_API_KEY`, the UI will show a configuration error instead of guessing.
+Without `OPENAI_API_KEY`, the UI will show a configuration error instead of guessing.
 
 ## Demo Flow
 
@@ -49,8 +49,7 @@ PanicBoard is a standard Next.js app and deploys cleanly on Vercel.
 4. Build command: `npm run build`.
 5. Install command: `npm install`.
 6. Add `OPENAI_API_KEY` in `Settings > Environment Variables`.
-7. Add `OPENAI_MODEL` only if you want to override the default `gpt-4o-mini`.
-8. Deploy.
+7. Deploy.
 
 The app requires `OPENAI_API_KEY` for extraction.
 
