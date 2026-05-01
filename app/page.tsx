@@ -10,6 +10,7 @@ import type { BoardSource, BucketId, EstimatedEffort, ExtractApiResponse, Extrac
 
 type SourceItem = BoardSource;
 type EditableTask = ExtractedTask;
+type ApiErrorShape = { error?: string };
 
 const taskTypes: TaskType[] = ["assignment", "exam", "quiz", "reading", "project", "discussion", "other"];
 const efforts: EstimatedEffort[] = ["low", "medium", "high"];
@@ -79,6 +80,17 @@ function makeSource(sourceName: string, rawText: string, kind: SourceKind): Sour
 function pastedSourceName(rawText: string) {
   const firstLine = rawText.split(/\n+/).map((line) => line.trim()).find(Boolean);
   return firstLine ? `Pasted: ${firstLine.slice(0, 42)}` : "Pasted course text";
+}
+
+async function readApiJson<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  const body = contentType.includes("application/json") ? await response.json() : await response.text();
+  if (!response.ok) {
+    const message = typeof body === "object" && body && "error" in body ? String((body as ApiErrorShape).error) : fallbackMessage;
+    throw new Error(message);
+  }
+  if (typeof body === "string") throw new Error(fallbackMessage);
+  return body as T;
 }
 
 function taskFingerprint(task: Pick<ExtractedTask, "title" | "dueDate" | "taskType">) {
@@ -400,8 +412,7 @@ export default function Home() {
     setMessage("Trying to read that course page...");
     try {
       const response = await fetch("/api/fetch-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      const data = await readApiJson<{ text: string }>(response, "That course page could not be read. Paste the visible page text below instead.");
       const source = makeSource(`${parsedUrl.hostname}${parsedUrl.pathname === "/" ? "" : parsedUrl.pathname}`, data.text, "url");
       const { accepted, skippedNames } = addSources([source]);
       setMessage(accepted.length ? "Course page text is ready. Build the board when you are ready." : skippedNames[0] || "This website has already been added.");
@@ -420,16 +431,23 @@ export default function Home() {
     setLoading(true);
     setMessage("Extracting deadlines and building your board...");
     try {
-      const extracted = await Promise.all(allSources.map(async (source) => {
+      const results = await Promise.allSettled(allSources.map(async (source) => {
         const response = await fetch("/api/extract", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ...source, currentDate: new Date().toISOString() })
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        const data = await readApiJson<ExtractApiResponse>(response, "Extraction timed out or returned an invalid response. Try building one source at a time, or paste a shorter assignment/calendar section.");
         return { source, data: data as ExtractApiResponse };
       }));
+      const extracted = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+      const failedCount = results.length - extracted.length;
+
+      if (extracted.length === 0) {
+        const firstFailure = results.find((result) => result.status === "rejected");
+        throw new Error(firstFailure?.status === "rejected" && firstFailure.reason instanceof Error ? firstFailure.reason.message : "Extraction failed. Try a shorter source or build one class at a time.");
+      }
+
       const validExtractions = extracted.filter(({ data }) => data.tasks.length > 0);
       const invalidSources = extracted.filter(({ data }) => data.tasks.length === 0).map(({ source }) => source);
 
@@ -452,7 +470,7 @@ export default function Home() {
       markSourcesExtracted(validExtractions.map(({ source }) => source));
       setMessage(
         deduped.length
-          ? `Built ${deduped.length} new task${deduped.length === 1 ? "" : "s"}.${invalidSources.length ? ` Skipped ${invalidSources.length} source${invalidSources.length === 1 ? "" : "s"} with no deadlines.` : ""} Start with the top card in Today.`
+          ? `Built ${deduped.length} new task${deduped.length === 1 ? "" : "s"}.${invalidSources.length ? ` Skipped ${invalidSources.length} source${invalidSources.length === 1 ? "" : "s"} with no deadlines.` : ""}${failedCount ? ` ${failedCount} source${failedCount === 1 ? "" : "s"} timed out; try that one by itself.` : ""} Start with the top card in Today.`
           : "No new tasks found. This source may already be on the board."
       );
     } catch (error) {

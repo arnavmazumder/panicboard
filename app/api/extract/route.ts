@@ -72,6 +72,27 @@ const jsonSchema = {
   }
 } as const;
 
+const deadlinePattern =
+  /\b(due|deadline|exam|quiz|midterm|final|project|homework|hw\b|assignment|reading|discussion|presentation|submit|lab|paper|proposal|reflection|checkpoint|credit|opens|closes|tba|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/i;
+
+function compactCourseText(rawText: string) {
+  const lines = rawText
+    .split(/\n+|(?<=[.!?])\s+(?=[A-Z0-9])/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  if (lines.length === 0) return rawText.slice(0, 12_000);
+
+  const kept = new Set<number>();
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!deadlinePattern.test(lines[index])) continue;
+    kept.add(index);
+    if (index > 0 && /course|syllabus|schedule|calendar|class|cs|cse|bio|chem|hist|psy/i.test(lines[index - 1])) kept.add(index - 1);
+  }
+
+  const compacted = (kept.size ? Array.from(kept).sort((a, b) => a - b).map((index) => lines[index]) : lines.slice(0, 40)).slice(0, 28).join("\n");
+  return compacted.slice(0, 8_000);
+}
+
 function clampResponse(response: ExtractApiResponse): ExtractApiResponse {
   return {
     courseName: response.courseName ?? null,
@@ -114,11 +135,12 @@ export async function POST(request: Request) {
           model: `gpt-4o-${"mini"}`,
           response_format: { type: "json_schema", json_schema: jsonSchema },
           temperature: 0.1,
+          max_tokens: 1800,
           messages: [
             {
               role: "system",
               content:
-                "You are extracting student deadlines from syllabus/course text. Return only valid JSON matching the schema. Extract due dates, deadlines, exams, quizzes, midterms, finals, projects, homework/HW, readings, discussions, and other class obligations. Preserve uncertainty. Do not invent dates. Use YYYY-MM-DD only when a date is explicit or directly computable from currentDate. If a date is vague, include dueDateText, set dueDate null, and use confidence below 0.6. For courseName, prefer the stable course identifier if present, such as CSE 452, BIO 142, CHEM 201, or HIST 88; include a short title only if no code exists. Use the same courseName for every task from that source unless the text clearly contains multiple different courses. If the text is not a syllabus, course calendar, LMS page, assignment list, or class schedule with actionable student obligations, return courseName null, tasks [], and a warning that no student deadlines or obligations were found."
+                "You are extracting student deadlines from syllabus/course text. Return only valid JSON matching the schema. Extract at most 25 important due dates, deadlines, exams, quizzes, midterms, finals, projects, homework/HW, readings, discussions, and class obligations. Preserve uncertainty. Do not invent dates. Use YYYY-MM-DD only when a date is explicit or directly computable from currentDate. If a date is vague, include dueDateText, set dueDate null, and use confidence below 0.6. For courseName, prefer the stable course identifier if present, such as CSE 452, BIO 142, CHEM 201, or HIST 88. If the text clearly contains multiple different courses, keep each task's real courseName. If the text is not a syllabus, course calendar, LMS page, assignment list, or class schedule with actionable student obligations, return courseName null, tasks [], and a warning that no student deadlines or obligations were found."
             },
             {
               role: "user",
@@ -127,11 +149,11 @@ Source name: ${sourceName}
 ${schemaInstruction}
 
 Course text:
-${rawText.slice(0, 60_000)}`
+${compactCourseText(rawText)}`
             }
           ]
         },
-        { timeout: 30_000, maxRetries: 1 }
+        { timeout: 24_000, maxRetries: 0 }
       );
       const content = completion.choices[0]?.message.content || "{}";
       return NextResponse.json(clampResponse(JSON.parse(content) as ExtractApiResponse));
