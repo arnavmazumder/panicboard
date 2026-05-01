@@ -439,7 +439,7 @@ export default function Home() {
       if (replace) updateTasks([]);
 
       for (const [index, source] of allSources.entries()) {
-        setMessage(`Processing ${index + 1}/${allSources.length}: ${source.sourceName}`);
+        setMessage(`Processing ${index + 1}/${allSources.length} sources...`);
         try {
           const response = await fetch("/api/extract", {
             method: "POST",
@@ -451,7 +451,7 @@ export default function Home() {
           if (data.tasks.length === 0) {
             skippedCount += 1;
             setSources((current) => current.filter((item) => item.id !== source.id));
-            setMessage(`Processed ${index + 1}/${allSources.length}. Skipped ${source.sourceName}: no deadlines found.`);
+            setMessage(`Processed ${index + 1}/${allSources.length}. No deadlines found in that source.`);
             continue;
           }
 
@@ -468,7 +468,7 @@ export default function Home() {
           setMessage(`Processed ${index + 1}/${allSources.length}. Added ${builtCount} task${builtCount === 1 ? "" : "s"} so far.`);
         } catch {
           failedCount += 1;
-          setMessage(`Processed ${index + 1}/${allSources.length}. ${source.sourceName} timed out; continuing with the rest.`);
+          setMessage(`Processed ${index + 1}/${allSources.length}. One source timed out; continuing with the rest.`);
         }
       }
 
