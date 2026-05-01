@@ -89,6 +89,27 @@ select {
   border-color: var(--line) !important;
 }
 
+.dark :is(.bg-red-50, .bg-red-100) {
+  background-color: rgba(127, 29, 29, 0.18) !important;
+}
+
+.dark :is(.text-red-700) {
+  color: #f0a3a3 !important;
+}
+
+.dark :is(.border-red-100, .border-red-200) {
+  border-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+.dark :is(.ring-red-100) {
+  --tw-ring-color: rgba(248, 113, 113, 0.18) !important;
+}
+
+.dark :is(button, a).hover\:bg-red-50:hover,
+.dark :is(button, a).hover\:bg-red-100:hover {
+  background-color: rgba(127, 29, 29, 0.28) !important;
+}
+
 .dark :is(input, textarea, select) {
   background-color: rgba(15, 23, 42, 0.9) !important;
   border-color: var(--line) !important;
