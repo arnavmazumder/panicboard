@@ -34,6 +34,32 @@ function formatTime(seconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
+function playTimerChime() {
+  const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return;
+
+  const context = new AudioContextConstructor();
+  const master = context.createGain();
+  master.gain.value = 0.16;
+  master.connect(context.destination);
+
+  [523.25, 659.25, 783.99].forEach((frequency, index) => {
+    const start = context.currentTime + index * 0.14;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.42);
+    oscillator.connect(gain).connect(master);
+    oscillator.start(start);
+    oscillator.stop(start + 0.46);
+  });
+
+  window.setTimeout(() => void context.close(), 900);
+}
+
 function Timer({
   focusMinutes,
   isRunning,
@@ -219,6 +245,7 @@ export default function TodayPage() {
         if (current <= 1) {
           window.clearInterval(timer);
           setIsRunning(false);
+          playTimerChime();
           return 0;
         }
         return current - 1;
