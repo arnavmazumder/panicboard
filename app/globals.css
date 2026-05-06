@@ -105,6 +105,21 @@ select {
   --tw-ring-color: rgba(248, 113, 113, 0.18) !important;
 }
 
+.dark .first-action-card {
+  background-color: rgba(20, 184, 166, 0.12) !important;
+  border: 1px solid rgba(45, 212, 191, 0.18);
+}
+
+.dark .first-action-card :is(.text-teal-800),
+.dark .first-action-callout :is(.text-teal-800) {
+  color: #5eead4 !important;
+}
+
+.dark .first-action-card :is(.text-slate-900),
+.dark .first-action-callout :is(.text-slate-900) {
+  color: #dffcf7 !important;
+}
+
 .dark :is(button, a).hover\:bg-red-50:hover,
 .dark :is(button, a).hover\:bg-red-100:hover {
   background-color: rgba(127, 29, 29, 0.28) !important;

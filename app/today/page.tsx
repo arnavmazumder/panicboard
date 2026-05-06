@@ -196,7 +196,7 @@ function TaskFocus({
       </div>
       <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">{task.title}</h1>
       <p className="mt-2 text-sm font-bold text-slate-500">{task.courseName}</p>
-      <div className="mt-6 border-l-2 border-teal-700 pl-4">
+      <div className="first-action-callout mt-6 border-l-2 border-teal-700 pl-4">
         <p className="text-xs font-black uppercase text-teal-800">First step</p>
         <p className="mt-1 text-lg font-bold leading-7 text-slate-900">{task.suggestedFirstStep}</p>
       </div>

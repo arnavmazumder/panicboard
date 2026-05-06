@@ -548,7 +548,7 @@ export default function Home() {
               </div>
               <h2 className="mt-3 text-2xl font-black leading-tight">{nextTask.title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">{nextTask.courseName}</p>
-              <div className="mt-4 rounded-md bg-teal-50 p-4">
+              <div className="first-action-card mt-4 rounded-md bg-teal-50 p-4">
                 <p className="text-xs font-black uppercase text-teal-800">25-minute first action</p>
                 <p className="mt-1 font-bold leading-6 text-slate-900">{nextTask.suggestedFirstStep}</p>
               </div>
